@@ -1,0 +1,6 @@
+Flask
+pycuda
+numpy
+numba
+Pillow
+scipy
