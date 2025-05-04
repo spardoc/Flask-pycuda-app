@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 from pycuda_processor import process_image
 from PIL import Image
 import numpy as np
+from pycuda_motion_blur import process_image_motion_blur
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -33,6 +34,9 @@ def index():
 
         # Leer siempre el modo
         mode = request.form.get('mode', 'cpu')  # 'cpu' o 'gpu'
+        
+        # Tipo de procesamiento: 'dog' o 'motion'
+        method = request.form.get('method', 'dog')
 
         # Leer y validar la opción de máscara
         opt = request.form.get('mask_option', '9')
@@ -45,15 +49,19 @@ def index():
                 return render_template('index.html',
                     error='Tamaño personalizado inválido: impar entre 1 y 501')
         else:
-            mask_size = int(opt)   # será '9', '13' o '21'
+            mask_size = int(opt)
 
-        # Procesar
-        dog_np, stats = process_image(img_np, mask_size, mode)
+        # Procesar según método
+        if method == 'motion':
+            result_np, stats = process_image_motion_blur(img_np, mask_size, mode)
+            out_name = f"motion_{mode}_{mask_size}.jpg"
+        else:
+            result_np, stats = process_image(img_np, mask_size, mode)
+            out_name = f"dog_{mode}_{mask_size}.jpg"
 
         # Guardar resultado
-        out_name = f"dog_{mode}_{mask_size}.jpg"  # Sin coma al final
         path_out = os.path.join(app.config['UPLOAD_FOLDER'], out_name)
-        Image.fromarray(dog_np).save(path_out)
+        Image.fromarray(result_np).save(path_out)
 
         return render_template('index.html',
                                 input_image=url_for('static', filename='uploads/' + filename),
@@ -61,6 +69,7 @@ def index():
                                 stats=stats)
 
     return render_template('index.html')
+
 
 
 if __name__ == '__main__':
