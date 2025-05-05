@@ -5,7 +5,7 @@ from scipy.signal import convolve2d
 import numpy as np
 from PIL import Image
 
-import pycuda.autoinit                      # crea un único contexto al importar
+import pycuda.autoinit
 from pycuda import driver as drv
 from pycuda.compiler import SourceModule
 
@@ -20,18 +20,18 @@ __global__ void convolutionGPU(
     int width, int height, int channels,
     float* mask, int maskSize)
 {
-    int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    int numPixels = width * height;
-    if (idx >= numPixels) return;
-    int row = idx / width;
-    int col = idx % width;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    
+    if (x >= width || y >= height) return;
+    
     int offset = maskSize / 2;
     for (int c = 0; c < channels; c++) {
         float sum = 0.0f;
         for (int j = -offset; j <= offset; j++) {
             for (int i = -offset; i <= offset; i++) {
-                int xi = col + i;
-                int yj = row + j;
+                int xi = x + i;
+                int yj = y + j;
                 if (xi >= 0 && xi < width && yj >= 0 && yj < height) {
                     int imgIdx = (yj * width + xi) * channels + c;
                     int maskIdx = (j + offset) * maskSize + (i + offset);
@@ -39,7 +39,7 @@ __global__ void convolutionGPU(
                 }
             }
         }
-        output[(row * width + col) * channels + c] = sum;
+        output[(y * width + x) * channels + c] = sum;
     }
 }
 """
@@ -63,14 +63,9 @@ def create_gaussian_mask(mask_size, sigma):
 # ====================================================================
 # Convolución en CPU con Numba
 def convolution_host(input_img: np.ndarray, mask: np.ndarray) -> np.ndarray:
-    """
-    Convoluciona cada canal por separado con scipy.signal.convolve2d (C puro).
-    boundary='fill' con fillvalue=0 imita tu chequeo de bordes.
-    """
     h, w, c = input_img.shape
     output = np.zeros((h, w, c), dtype=np.float32)
     for ch in range(c):
-        # 'same' deja la salida del mismo tamaño que la entrada
         output[:, :, ch] = convolve2d(
             input_img[:, :, ch].astype(np.float32),
             mask.astype(np.float32),
@@ -82,11 +77,9 @@ def convolution_host(input_img: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 # ====================================================================
 # Función principal de procesamiento
-# Devuelve la imagen DoG y estadísticas de tiempo/modo
-
-def process_image(img_np: np.ndarray, mask_size: int, mode: str):
+def process_image(img_np: np.ndarray, mask_size: int, mode: str, 
+                blocks_x=16, blocks_y=16, threads_x=16, threads_y=16):
     h, w, c = img_np.shape
-    total_pixels = w * h
 
     # Crear máscaras Gaussianas
     mask_small = create_gaussian_mask(mask_size, sigma=1.5)
@@ -96,30 +89,40 @@ def process_image(img_np: np.ndarray, mask_size: int, mode: str):
     blur1 = np.zeros_like(img_np, dtype=np.float32)
     blur2 = np.zeros_like(img_np, dtype=np.float32)
 
-    stats = {'mask_size': mask_size}
+    stats = {
+        'mask_size': mask_size,
+        'mode': mode.upper()
+    }
 
     if mode.lower() == 'cpu':
         # CPU con Numba
         start = time.time()
         blur1 = convolution_host(img_np, mask_small)
         blur2 = convolution_host(img_np, mask_large)
-        elapsed = time.time() - start
-        stats.update({'mode': 'CPU', 'time_s': elapsed})
+        stats['time_s'] = time.time() - start
     else:
-        # GPU con PyCUDA
-        threads = 256
-        blocks = (total_pixels + threads - 1) // threads
-        stats.update({'mode': 'GPU', 'threads': threads, 'blocks': blocks})
+        # Configuración GPU personalizada
+        block_dim = (threads_x, threads_y, 1)
+        grid_dim = (
+            (w + threads_x - 1) // threads_x,
+            (h + threads_y - 1) // threads_y,
+            1
+        )
+        
+        stats.update({
+            'blocks': f"{blocks_x}x{blocks_y}",
+            'threads': f"{threads_x}x{threads_y}"
+        })
 
         # Asegurar que el contexto de autoinit esté activo
         auto_context.push()
         try:
             # Reservar memoria en GPU
-            d_in      = drv.mem_alloc(img_np.nbytes)
-            d_mask_s  = drv.mem_alloc(mask_small.nbytes)
-            d_mask_l  = drv.mem_alloc(mask_large.nbytes)
-            d_b1      = drv.mem_alloc(blur1.nbytes)
-            d_b2      = drv.mem_alloc(blur2.nbytes)
+            d_in = drv.mem_alloc(img_np.nbytes)
+            d_mask_s = drv.mem_alloc(mask_small.nbytes)
+            d_mask_l = drv.mem_alloc(mask_large.nbytes)
+            d_b1 = drv.mem_alloc(blur1.nbytes)
+            d_b2 = drv.mem_alloc(blur2.nbytes)
 
             # Copiar datos a GPU
             drv.memcpy_htod(d_in, img_np)
@@ -127,20 +130,21 @@ def process_image(img_np: np.ndarray, mask_size: int, mode: str):
             drv.memcpy_htod(d_mask_l, mask_large)
 
             # Lanzar kernels y medir tiempo
-            start_evt = drv.Event(); end_evt = drv.Event()
+            start_evt = drv.Event()
+            end_evt = drv.Event()
             start_evt.record()
 
             _convolution_gpu(
                 d_in, d_b1,
                 np.int32(w), np.int32(h), np.int32(c),
                 d_mask_s, np.int32(mask_size),
-                block=(threads,1,1), grid=(blocks,1)
+                block=block_dim, grid=grid_dim
             )
             _convolution_gpu(
                 d_in, d_b2,
                 np.int32(w), np.int32(h), np.int32(c),
                 d_mask_l, np.int32(mask_size),
-                block=(threads,1,1), grid=(blocks,1)
+                block=block_dim, grid=grid_dim
             )
 
             end_evt.record()

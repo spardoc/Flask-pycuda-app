@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, url_for
 from werkzeug.utils import secure_filename
 from pycuda_dog import process_image
 from pycuda_motion_blur import process_image_motion_blur
-from pycuda_mean_filter import process_image_mean_filter  # ✅ Importa el filtro de media
+from pycuda_mean_filter import process_image_mean_filter
 from PIL import Image
 import numpy as np
 
@@ -52,25 +52,52 @@ def index():
         else:
             mask_size = int(opt)
 
+        # Configuración GPU
+        gpu_config = {}
+        if mode == 'gpu':
+            try:
+                gpu_config['blocks_x'] = int(request.form.get('blocks_x', 16))
+                gpu_config['blocks_y'] = int(request.form.get('blocks_y', 16))
+                gpu_config['threads_x'] = int(request.form.get('threads_x', 16))
+                gpu_config['threads_y'] = int(request.form.get('threads_y', 16))
+                
+                # Validar valores
+                if any(v < 1 or v > 1024 for v in gpu_config.values()):
+                    raise ValueError
+            except (ValueError, TypeError):
+                return render_template('index.html',
+                    error='Configuración GPU inválida: valores deben ser entre 1 y 1024')
+
         # Procesar según método seleccionado
-        if method == 'motion':
-            result_np, stats = process_image_motion_blur(img_np, mask_size, mode)
-            out_name = f"motion_{mode}_{mask_size}.jpg"
-        elif method == 'mean':
-            result_np, stats = process_image_mean_filter(img_np, mask_size, mode)
-            out_name = f"mean_{mode}_{mask_size}.jpg"
-        else:  # default: dog
-            result_np, stats = process_image(img_np, mask_size, mode)
-            out_name = f"dog_{mode}_{mask_size}.jpg"
+        try:
+            if method == 'motion':
+                result_np, stats = process_image_motion_blur(img_np, mask_size, mode, **gpu_config)
+                out_name = f"motion_{mode}_{mask_size}.jpg"
+            elif method == 'mean':
+                result_np, stats = process_image_mean_filter(img_np, mask_size, mode, **gpu_config)
+                out_name = f"mean_{mode}_{mask_size}.jpg"
+            else:  # default: dog
+                result_np, stats = process_image(img_np, mask_size, mode, **gpu_config)
+                out_name = f"dog_{mode}_{mask_size}.jpg"
+        except Exception as e:
+            return render_template('index.html',
+                               error=f'Error al procesar imagen: {str(e)}')
 
         # Guardar imagen procesada
         path_out = os.path.join(app.config['UPLOAD_FOLDER'], out_name)
         Image.fromarray(result_np).save(path_out)
 
+        # Añadir configuración GPU a stats si es necesario
+        if mode == 'gpu':
+            stats.update({
+                'blocks': f"{gpu_config['blocks_x']}x{gpu_config['blocks_y']}",
+                'threads': f"{gpu_config['threads_x']}x{gpu_config['threads_y']}"
+            })
+
         return render_template('index.html',
-                               input_image=url_for('static', filename='uploads/' + filename),
-                               output_image=url_for('static', filename='uploads/' + out_name),
-                               stats=stats)
+                           input_image=url_for('static', filename='uploads/' + filename),
+                           output_image=url_for('static', filename='uploads/' + out_name),
+                           stats=stats)
 
     return render_template('index.html')
 

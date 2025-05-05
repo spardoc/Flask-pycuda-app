@@ -64,11 +64,17 @@ class MeanFilter:
         output /= (mask_size * mask_size)
         return np.clip(output, 0, 255).astype(np.uint8)
 
-    def process_gpu(self, img_np, mask_size):
+    def process_gpu(self, img_np, mask_size, blocks_x=16, blocks_y=16, threads_x=16, threads_y=16):
         height, width, channels = img_np.shape
         output = np.zeros_like(img_np, dtype=np.uint8)
-        block_dim = (16, 16, 1)
-        grid_dim = ((width + 15) // 16, (height + 15) // 16, 1)
+        
+        # Configuración personalizada de bloques e hilos
+        block_dim = (threads_x, threads_y, 1)
+        grid_dim = (
+            (width + threads_x - 1) // threads_x,
+            (height + threads_y - 1) // threads_y,
+            1
+        )
 
         self.auto_context.push()
         try:
@@ -91,15 +97,22 @@ class MeanFilter:
 
         return output
 
-# Esta es la función que usarás en app.py
-def process_image_mean_filter(img_np, mask_size, mode='gpu'):
+# Función principal que usa la clase MeanFilter
+def process_image_mean_filter(img_np, mask_size, mode='gpu', blocks_x=16, blocks_y=16, threads_x=16, threads_y=16):
     filter = MeanFilter()
     start = time.time()
     
     if mode == 'cpu':
         result = filter.process_cpu(img_np, mask_size)
     else:
-        result = filter.process_gpu(img_np, mask_size)
+        result = filter.process_gpu(
+            img_np, 
+            mask_size,
+            blocks_x=blocks_x,
+            blocks_y=blocks_y,
+            threads_x=threads_x,
+            threads_y=threads_y
+        )
 
     elapsed = time.time() - start
     stats = {
@@ -107,10 +120,11 @@ def process_image_mean_filter(img_np, mask_size, mode='gpu'):
         'mask_size': mask_size,
         'time_s': round(elapsed, 4)
     }
+    
     if mode == 'gpu':
         stats.update({
-            'threads': 256,
-            'blocks': ((img_np.shape[0] * img_np.shape[1]) + 255) // 256
+            'blocks': f"{blocks_x}x{blocks_y}",
+            'threads': f"{threads_x}x{threads_y}"
         })
 
     return result, stats
