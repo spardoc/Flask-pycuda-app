@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, url_for
 from werkzeug.utils import secure_filename
-from pycuda_processor import process_image
+from pycuda_dog import process_image
 from PIL import Image
 import numpy as np
 from pycuda_motion_blur import process_image_motion_blur
