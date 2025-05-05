@@ -7,9 +7,22 @@
         rel="stylesheet">
 </head>
 <body class="p-4">
-    <h2>Procesamiento de Imagen - DoG</h2>
-    <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="method" value="dog">
+    <h1>Procesamiento de Imágenes con Filtros</h1>
+    
+    <!-- Selector de filtro -->
+    <div class="mb-4">
+        <label for="filter-selector" class="form-label">Seleccionar Filtro:</label>
+        <select id="filter-selector" class="form-select">
+            <option value="dog">Difference of Gaussians (DoG)</option>
+            <option value="motion">Motion Blur</option>
+            <option value="mean">Mean Filter</option>
+        </select>
+    </div>
+
+    <!-- Formulario único que cambia según el filtro seleccionado -->
+    <form method="post" enctype="multipart/form-data" id="filter-form">
+        <input type="hidden" name="method" id="method-input" value="dog">
+        
         <div class="row g-3 align-items-center">
             <!-- Subir imagen -->
             <div class="col-auto">
@@ -18,121 +31,35 @@
             </div>
 
             <!-- Tamaño de máscara -->
-            <div class="col-auto">
+            <div class="col-auto" id="mask-size-group">
                 <label>Tamaño de Máscara:</label>
-                <div class="d-flex flex-wrap">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="dog_mask9" value="9" checked>
-                        <label class="form-check-label" for="dog_mask9">9×9</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="dog_mask13" value="13">
-                        <label class="form-check-label" for="dog_mask13">13×13</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="dog_mask21" value="21">
-                        <label class="form-check-label" for="dog_mask21">21×21</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="dog_mask_custom" value="custom">
-                        <label class="form-check-label" for="dog_mask_custom">Personalizada</label>
-                    </div>
+                <div class="d-flex flex-wrap" id="mask-options">
+                    <!-- Opciones de máscara se llenarán dinámicamente -->
                 </div>
             </div>
 
             <!-- Input personalizado -->
-            <div id="dog-custom-size-group" class="col-auto" style="display: none;">
+            <div id="custom-size-group" class="col-auto" style="display: none;">
                 <label for="mask_size">Tamaño:</label>
                 <input type="number" name="mask_size" class="form-control form-control-sm" placeholder="ej. 201" min="1" max="501" step="2">
             </div>
 
-            <!-- Modo -->
-            <div class="col-auto">
-                <label>Modo:</label>
-                <select name="mode" class="form-select form-select-sm">
-                    <option value="cpu">CPU</option>
-                    <option value="gpu">GPU</option>
-                </select>
-            </div>
-
-            <!-- Botón -->
-            <div class="col-auto">
-                <button class="btn btn-primary">Procesar DoG</button>
-            </div>
-        </div>
-    </form>
-
-    {% if stats and "dog" in output_image %}
-    <hr>
-    <div class="row">
-        <div class="col-md-6">
-            <h5>Original</h5>
-            <img src="{{ input_image }}" class="img-fluid">
-        </div>
-        <div class="col-md-6">
-            <h5>Procesada (DoG)</h5>
-            <img src="{{ output_image }}" class="img-fluid">
-        </div>
-    </div>
-    <div class="mt-3">
-        <h5>Estadísticas:</h5>
-        <ul>
-            <li>Modo: {{ stats.mode }}</li>
-            <li>Tamaño máscara: {{ stats.mask_size }}</li>
-            {% if stats.mode == 'GPU' %}
-            <li>Hilos por bloque: {{ stats.threads }}</li>
-            <li>Bloques: {{ stats.blocks }}</li>
-            {% endif %}
-            <li>Tiempo (s): {{ stats.time_s | round(4) }}</li>
-        </ul>
-    </div>
-    {% endif %}
-
-    <hr class="my-5">
-
-    <h2>Procesamiento de Imagen - Motion Blur</h2>
-    <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="method" value="motion">
-        <div class="row g-3 align-items-center">
-            <!-- Subir imagen -->
-            <div class="col-auto">
-                <label for="image">Imagen:</label>
-                <input class="form-control form-control-sm" type="file" name="image" required>
-            </div>
-
-            <!-- Tamaño de máscara -->
-            <div class="col-auto">
-                <label>Tamaño de Máscara:</label>
-                <div class="d-flex flex-wrap">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="motion_mask9" value="9" checked>
-                        <label class="form-check-label" for="motion_mask9">9×9</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="motion_mask13" value="13">
-                        <label class="form-check-label" for="motion_mask13">13×13</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="motion_mask21" value="21">
-                        <label class="form-check-label" for="motion_mask21">21×21</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="motion_mask_custom" value="custom">
-                        <label class="form-check-label" for="motion_mask_custom">Personalizada</label>
-                    </div>
+            <!-- Configuración de GPU (solo visible cuando se selecciona GPU) -->
+            <div id="gpu-config-group" style="display: none;">
+                <div class="col-auto">
+                    <label for="blocks">Bloques:</label>
+                    <input type="number" name="blocks" class="form-control form-control-sm" value="16" min="1" max="1024">
+                </div>
+                <div class="col-auto">
+                    <label for="threads">Hilos por bloque:</label>
+                    <input type="number" name="threads" class="form-control form-control-sm" value="16" min="1" max="1024">
                 </div>
             </div>
 
-            <!-- Input personalizado -->
-            <div id="motion-custom-size-group" class="col-auto" style="display: none;">
-                <label for="mask_size">Tamaño:</label>
-                <input type="number" name="mask_size" class="form-control form-control-sm" placeholder="ej. 201" min="1" max="501" step="2">
-            </div>
-
             <!-- Modo -->
             <div class="col-auto">
                 <label>Modo:</label>
-                <select name="mode" class="form-select form-select-sm">
+                <select name="mode" id="mode-selector" class="form-select form-select-sm">
                     <option value="cpu">CPU</option>
                     <option value="gpu">GPU</option>
                 </select>
@@ -140,12 +67,12 @@
 
             <!-- Botón -->
             <div class="col-auto">
-                <button class="btn btn-primary">Procesar Motion Blur</button>
+                <button class="btn btn-primary" id="process-button">Procesar DoG</button>
             </div>
         </div>
     </form>
 
-    {% if stats and "motion" in output_image %}
+    {% if stats and output_image %}
     <hr>
     <div class="row">
         <div class="col-md-6">
@@ -153,96 +80,14 @@
             <img src="{{ input_image }}" class="img-fluid">
         </div>
         <div class="col-md-6">
-            <h5>Procesada (Motion Blur)</h5>
+            <h5>Procesada ({{ stats.method }})</h5>
             <img src="{{ output_image }}" class="img-fluid">
         </div>
     </div>
     <div class="mt-3">
         <h5>Estadísticas:</h5>
         <ul>
-            <li>Modo: {{ stats.mode }}</li>
-            <li>Tamaño máscara: {{ stats.mask_size }}</li>
-            {% if stats.mode == 'GPU' %}
-            <li>Hilos por bloque: {{ stats.threads }}</li>
-            <li>Bloques: {{ stats.blocks }}</li>
-            {% endif %}
-            <li>Tiempo (s): {{ stats.time_s | round(4) }}</li>
-        </ul>
-    </div>
-    {% endif %}
-
-    <hr class="my-5">
-
-    <h2>Procesamiento de Imagen - Mean Filter</h2>
-    <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="method" value="mean">
-        <div class="row g-3 align-items-center">
-            <!-- Subir imagen -->
-            <div class="col-auto">
-                <label for="image">Imagen:</label>
-                <input class="form-control form-control-sm" type="file" name="image" required>
-            </div>
-
-            <!-- Tamaño de máscara -->
-            <div class="col-auto">
-                <label>Tamaño de Máscara:</label>
-                <div class="d-flex flex-wrap">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="mean_mask3" value="3" checked>
-                        <label class="form-check-label" for="mean_mask3">3×3</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="mean_mask5" value="5">
-                        <label class="form-check-label" for="mean_mask5">5×5</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="mean_mask7" value="7">
-                        <label class="form-check-label" for="mean_mask7">7×7</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="mask_option" id="mean_mask_custom" value="custom">
-                        <label class="form-check-label" for="mean_mask_custom">Personalizada</label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Input personalizado -->
-            <div id="mean-custom-size-group" class="col-auto" style="display: none;">
-                <label for="mask_size">Tamaño:</label>
-                <input type="number" name="mask_size" class="form-control form-control-sm" placeholder="ej. 9" min="1" max="501" step="2">
-            </div>
-
-            <!-- Modo -->
-            <div class="col-auto">
-                <label>Modo:</label>
-                <select name="mode" class="form-select form-select-sm">
-                    <option value="cpu">CPU</option>
-                    <option value="gpu">GPU</option>
-                </select>
-            </div>
-
-            <!-- Botón -->
-            <div class="col-auto">
-                <button class="btn btn-primary">Procesar Mean Filter</button>
-            </div>
-        </div>
-    </form>
-
-    {% if stats and "mean" in output_image %}
-    <hr>
-    <div class="row">
-        <div class="col-md-6">
-            <h5>Original</h5>
-            <img src="{{ input_image }}" class="img-fluid">
-        </div>
-        <div class="col-md-6">
-            <h5>Procesada (Mean Filter)</h5>
-            <img src="{{ output_image }}" class="img-fluid">
-        </div>
-    </div>
-    <div class="mt-3">
-        <h5>Estadísticas:</h5>
-        <ul>
+            <li>Filtro: {{ stats.method }}</li>
             <li>Modo: {{ stats.mode }}</li>
             <li>Tamaño máscara: {{ stats.mask_size }}</li>
             {% if stats.mode == 'GPU' %}
@@ -255,53 +100,126 @@
     {% endif %}
 
     <script>
-        // Mostrar input personalizado para DoG
-        const dogRadios = document.querySelectorAll('input[name="mask_option"]');
-        const dogCustomGroup = document.getElementById('dog-custom-size-group');
-        dogRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (radio.id.startsWith("dog_")) {
-                    if (radio.value === 'custom' && radio.checked) {
-                        dogCustomGroup.style.display = 'flex';
-                    } else if (radio.checked) {
-                        dogCustomGroup.style.display = 'none';
-                        dogCustomGroup.querySelector('input').value = '';
+        // Configuraciones para cada filtro
+        const filterConfigs = {
+            dog: {
+                name: "Difference of Gaussians (DoG)",
+                method: "dog",
+                maskOptions: [
+                    { value: "9", label: "9×9", id: "mask9", default: true },
+                    { value: "13", label: "13×13", id: "mask13" },
+                    { value: "21", label: "21×21", id: "mask21" },
+                    { value: "custom", label: "Personalizada", id: "mask_custom" }
+                ],
+                placeholder: "ej. 201",
+                min: 1,
+                max: 501,
+                step: 2
+            },
+            motion: {
+                name: "Motion Blur",
+                method: "motion",
+                maskOptions: [
+                    { value: "9", label: "9×9", id: "mask9", default: true },
+                    { value: "13", label: "13×13", id: "mask13" },
+                    { value: "21", label: "21×21", id: "mask21" },
+                    { value: "custom", label: "Personalizada", id: "mask_custom" }
+                ],
+                placeholder: "ej. 201",
+                min: 1,
+                max: 501,
+                step: 2
+            },
+            mean: {
+                name: "Mean Filter",
+                method: "mean",
+                maskOptions: [
+                    { value: "3", label: "3×3", id: "mask3", default: true },
+                    { value: "5", label: "5×5", id: "mask5" },
+                    { value: "7", label: "7×7", id: "mask7" },
+                    { value: "custom", label: "Personalizada", id: "mask_custom" }
+                ],
+                placeholder: "ej. 9",
+                min: 1,
+                max: 501,
+                step: 2
+            }
+        };
+
+        // Elementos del DOM
+        const filterSelector = document.getElementById('filter-selector');
+        const methodInput = document.getElementById('method-input');
+        const processButton = document.getElementById('process-button');
+        const maskOptionsContainer = document.getElementById('mask-options');
+        const customSizeGroup = document.getElementById('custom-size-group');
+        const customSizeInput = customSizeGroup.querySelector('input');
+        const modeSelector = document.getElementById('mode-selector');
+        const gpuConfigGroup = document.getElementById('gpu-config-group');
+
+        // Actualizar el formulario según el filtro seleccionado
+        function updateForm() {
+            const selectedFilter = filterSelector.value;
+            const config = filterConfigs[selectedFilter];
+            
+            // Actualizar método y texto del botón
+            methodInput.value = config.method;
+            processButton.textContent = `Procesar ${config.name}`;
+            
+            // Actualizar opciones de máscara
+            maskOptionsContainer.innerHTML = '';
+            config.maskOptions.forEach(option => {
+                const div = document.createElement('div');
+                div.className = 'form-check form-check-inline';
+                
+                const input = document.createElement('input');
+                input.className = 'form-check-input';
+                input.type = 'radio';
+                input.name = 'mask_option';
+                input.id = `${selectedFilter}_${option.id}`;
+                input.value = option.value;
+                if (option.default) input.checked = true;
+                
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `${selectedFilter}_${option.id}`;
+                label.textContent = option.label;
+                
+                div.appendChild(input);
+                div.appendChild(label);
+                maskOptionsContainer.appendChild(div);
+                
+                // Manejar cambios en los radios
+                input.addEventListener('change', () => {
+                    if (input.value === 'custom' && input.checked) {
+                        customSizeGroup.style.display = 'flex';
+                    } else if (input.checked) {
+                        customSizeGroup.style.display = 'none';
+                        customSizeInput.value = '';
                     }
-                }
+                });
             });
+            
+            // Actualizar input personalizado
+            customSizeInput.placeholder = config.placeholder;
+            customSizeInput.min = config.min;
+            customSizeInput.max = config.max;
+            customSizeInput.step = config.step;
+        }
+
+        // Manejar cambio de modo (CPU/GPU)
+        modeSelector.addEventListener('change', () => {
+            if (modeSelector.value === 'gpu') {
+                gpuConfigGroup.style.display = 'flex';
+            } else {
+                gpuConfigGroup.style.display = 'none';
+            }
         });
 
-        // Mostrar input personalizado para Motion
-        const motionRadios = document.querySelectorAll('input[name="mask_option"]');
-        const motionCustomGroup = document.getElementById('motion-custom-size-group');
-        motionRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (radio.id.startsWith("motion_")) {
-                    if (radio.value === 'custom' && radio.checked) {
-                        motionCustomGroup.style.display = 'flex';
-                    } else if (radio.checked) {
-                        motionCustomGroup.style.display = 'none';
-                        motionCustomGroup.querySelector('input').value = '';
-                    }
-                }
-            });
-        });
-
-        // Mostrar input personalizado para Mean
-        const meanRadios = document.querySelectorAll('input[name="mask_option"]');
-        const meanCustomGroup = document.getElementById('mean-custom-size-group');
-        meanRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (radio.id.startsWith("mean_")) {
-                    if (radio.value === 'custom' && radio.checked) {
-                        meanCustomGroup.style.display = 'flex';
-                    } else if (radio.checked) {
-                        meanCustomGroup.style.display = 'none';
-                        meanCustomGroup.querySelector('input').value = '';
-                    }
-                }
-            });
-        });
+        // Inicializar el formulario
+        updateForm();
+        
+        // Manejar cambio de filtro
+        filterSelector.addEventListener('change', updateForm);
     </script>
 </body>
 </html>
