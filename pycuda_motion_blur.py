@@ -5,7 +5,7 @@ from scipy.signal import convolve2d
 import numpy as np
 from PIL import Image
 
-import pycuda.autoinit                      # crea un único contexto al importar
+import pycuda.autoinit
 from pycuda import driver as drv
 from pycuda.compiler import SourceModule
 from numba import jit
@@ -13,8 +13,6 @@ from numba import jit
 # Referencia al contexto creado por autoinit
 auto_context = pycuda.autoinit.context
 
-# ===== DEFINIR KERNEL CUDA =====
-# Compilar kernel en tiempo de ejecución
 mod = SourceModule("""
             __global__ void motion_blur_45(float *img, float *out, float *mask, int width, int height, int channels, int mask_size)
             {
@@ -109,10 +107,10 @@ def process_image_motion_blur(img_np: np.ndarray, mask_size: int, mode: str):
         # Preparar memoria de salida
         output = np.zeros_like(img_np, dtype=np.float32)
 
-        # Crear máscara lineal (no diagonal) como en tu kernel funcional
-        mask = np.ones(mask_size, dtype=np.float32) / mask_size
+        mask_kernel = create_diagonal_kernel(mask_size)
+        mask = np.diag(mask_kernel).astype(np.float32)  # extrae solo la diagonal
 
-        # Aplanar imagen para tratarla como float*
+        # Aplanar imagen para tratarla como float
         flat_img = img_np.astype(np.float32).flatten()
         flat_out = output.flatten()
 
