@@ -79,9 +79,10 @@ def index():
             else:  # default: dog
                 result_np, stats = process_image(img_np, mask_size, mode, **gpu_config)
                 out_name = f"dog_{mode}_{mask_size}.jpg"
+            stats['method'] = method
         except Exception as e:
             return render_template('index.html',
-                               error=f'Error al procesar imagen: {str(e)}')
+                                error=f'Error al procesar imagen: {str(e)}')
 
         # Guardar imagen procesada
         path_out = os.path.join(app.config['UPLOAD_FOLDER'], out_name)
@@ -95,9 +96,9 @@ def index():
             })
 
         return render_template('index.html',
-                           input_image=url_for('static', filename='uploads/' + filename),
-                           output_image=url_for('static', filename='uploads/' + out_name),
-                           stats=stats)
+                            input_image=url_for('static', filename='uploads/' + filename),
+                            output_image=url_for('static', filename='uploads/' + out_name),
+                            stats=stats)
 
     return render_template('index.html')
 
