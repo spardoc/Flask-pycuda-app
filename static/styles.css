@@ -1,0 +1,21 @@
+.text-space {
+    width: 100%;
+    height: auto;
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr; /* Title takes remaining space, logo on the right */
+    align-items: center; /* Vertically centers both items */
+    padding: 10px 0;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ccc; /* Fixed border syntax */
+}
+
+.title {
+    text-align: center; /* Centers the h1 within its grid cell */
+    margin: 0; /* Removes default margins */
+}
+
+.logo-ups {
+    height: 60px; /* Adjust based on your logo's aspect ratio */
+    width: 300px; /* Maintains aspect ratio */
+    margin-left: 20px; /* Adds spacing between title and logo */
+}
