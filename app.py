@@ -2,9 +2,10 @@ import os
 from flask import Flask, render_template, request, url_for
 from werkzeug.utils import secure_filename
 from pycuda_dog import process_image
+from pycuda_motion_blur import process_image_motion_blur
+from pycuda_mean_filter import process_image_mean_filter  # ✅ Importa el filtro de media
 from PIL import Image
 import numpy as np
-from pycuda_motion_blur import process_image_motion_blur
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -32,13 +33,13 @@ def index():
         img = Image.open(path_in).convert('RGB')
         img_np = np.array(img, dtype=np.uint8)
 
-        # Leer siempre el modo
-        mode = request.form.get('mode', 'cpu')  # 'cpu' o 'gpu'
-        
-        # Tipo de procesamiento: 'dog' o 'motion'
+        # Leer modo (cpu o gpu)
+        mode = request.form.get('mode', 'cpu')
+
+        # Tipo de procesamiento
         method = request.form.get('method', 'dog')
 
-        # Leer y validar la opción de máscara
+        # Leer y validar tamaño de máscara
         opt = request.form.get('mask_option', '9')
         if opt == 'custom':
             try:
@@ -51,27 +52,29 @@ def index():
         else:
             mask_size = int(opt)
 
-        # Procesar según método
+        # Procesar según método seleccionado
         if method == 'motion':
             result_np, stats = process_image_motion_blur(img_np, mask_size, mode)
             out_name = f"motion_{mode}_{mask_size}.jpg"
-        else:
+        elif method == 'mean':
+            result_np, stats = process_image_mean_filter(img_np, mask_size, mode)
+            out_name = f"mean_{mode}_{mask_size}.jpg"
+        else:  # default: dog
             result_np, stats = process_image(img_np, mask_size, mode)
             out_name = f"dog_{mode}_{mask_size}.jpg"
 
-        # Guardar resultado
+        # Guardar imagen procesada
         path_out = os.path.join(app.config['UPLOAD_FOLDER'], out_name)
         Image.fromarray(result_np).save(path_out)
 
         return render_template('index.html',
-                                input_image=url_for('static', filename='uploads/' + filename),
-                                output_image=url_for('static', filename='uploads/' + out_name),
-                                stats=stats)
+                               input_image=url_for('static', filename='uploads/' + filename),
+                               output_image=url_for('static', filename='uploads/' + out_name),
+                               stats=stats)
 
     return render_template('index.html')
 
 
-
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(host='0.0.0.0', debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', debug=False, use_reloader=False)
