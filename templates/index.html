@@ -77,7 +77,7 @@
                     </div>
                 </div>
                 
-                <button onclick="processImage()" class="btn-filter" id="process-button">Procesar DoG</button>
+                <button onclick="processImage()" class="btn-filter" id="process-button">Procesar</button>
             </div>
 
         </div> 
@@ -152,6 +152,8 @@
         <button onclick="window.location.reload();" class="btn btn-secondary">Nueva Transformación</button>
     </div>
 {% endif %}
-
+<script>
+    populateMaskOptions() 
+</script>
 </body>
 </html>
