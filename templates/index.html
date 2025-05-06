@@ -5,239 +5,153 @@
     <title>Convolución PyCUDA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/styles.css" rel="stylesheet">
-    <style>
-        .gpu-config-row {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-    </style>
+    <script src="{{ url_for('static', filename='Scripts/scripts.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='Scripts/gpu-config.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='Scripts/processing.js') }}" defer></script>
 </head>
-<body class="p-4">
+
+<body>
     <div class="text-space">
         <img class="logo-ups" src="static\Logo_Universidad_Politécnica_Salesiana_del_Ecuador.png">
         <h1 class="title">Procesamiento de Imágenes con Filtros</h1>
     </div>
     <!-- Selector de filtro -->
-    <div class="mb-4">
-        <label for="filter-selector" class="form-label">Seleccionar Filtro:</label>
-        <select id="filter-selector" class="form-select">
-            <option value="dog">Difference of Gaussians (DoG)</option>
-            <option value="motion">Motion Blur</option>
-            <option value="mean">Mean Filter</option>
-        </select>
+    <div class="selection-space">
+        <h1 class="subtitle">Seleccionar Filtro</h1>
+        <!-- Selector de filtro como imágenes -->
+        <div class="filter-options" id="filter-options">
+            <div class="filter-option" data-value="dog">
+                <img class="select-img" src="static/dog.jpg" alt="DoG" />
+                <p>Difference of Gaussians (DoG)</p>
+            </div>
+            <div class="filter-option" data-value="motion">
+                <img class="select-img" src="static/motion_blur.jpeg" alt="Motion Blur" />
+                <p>Motion Blur</p>
+            </div>
+            <div class="filter-option selected" data-value="mean">
+                <img class="select-img" src="static/mean_filter.png" alt="Mean Filter" />
+                <p>Mean Filter</p>
+            </div>
+        </div>
+        <input type="hidden" name="method" id="method-input" value="dog">
     </div>
 
-    <!-- Formulario único que cambia según el filtro seleccionado -->
-    <form method="post" enctype="multipart/form-data" id="filter-form">
-        <input type="hidden" name="method" id="method-input" value="dog">
-        
-        <div class="row g-3 align-items-center">
-            <!-- Subir imagen -->
-            <div class="col-auto">
-                <label for="image" class="form-label">Imagen:</label>
-                <input class="form-control form-control-sm" type="file" name="image" id="image" required>
-            </div>
-
-            <!-- Tamaño de máscara -->
-            <div class="col-auto" id="mask-size-group">
-                <label class="form-label">Tamaño de Máscara:</label>
-                <div class="d-flex flex-wrap" id="mask-options">
-                    <!-- Opciones de máscara se llenarán dinámicamente -->
+    <div class="img-parameters-space">
+        <div class="form-space" method="post" id="filter-form">
+            <div class="size-mask-space">
+                <label class="form-label">Tamaño de Máscara</label>
+                <div class="size-mask" id="mask-size-group">
+                    <div class="flex-wrap-options" id="mask-options">
+                        <!-- Mask buttons will be populated here -->
+                    </div>
+                    <div id="custom-size-group" class="personalized-choice" style="display: none;">
+                        <label for="mask_size" class="form-label">Tamaño:</label>
+                        <input type="number" name="mask_size" class="personalized-choice-text" placeholder="ej. 201" min="1" max="501" step="2" disabled>
+                    </div>
                 </div>
             </div>
-
-            <!-- Input personalizado -->
-            <div id="custom-size-group" class="col-auto" style="display: none;">
-                <label for="mask_size" class="form-label">Tamaño:</label>
-                <input type="number" name="mask_size" class="form-control form-control-sm" placeholder="ej. 201" min="1" max="501" step="2">
-            </div>
-
-            <!-- Modo -->
-            <div class="col-auto">
+            <div class="dropdown-choice">
                 <label class="form-label">Modo:</label>
-                <select name="mode" id="mode-selector" class="form-select form-select-sm">
+                <select name="mode" id="mode-filter-selector" class="form-select-choice">
                     <option value="cpu">CPU</option>
                     <option value="gpu">GPU</option>
                 </select>
+                
+                
+                <div id="gpu-config-group" class="gpu-config-group">
+                    <div class="column-info">
+                        <label for="blocks_x" class="form-label">Bloques (X):</label>
+                        <input type="number" name="blocks_x" class="form-control form-control-sm" value="16" min="1" max="1024">
+                    </div>
+                    <div class="column-info">
+                        <label for="blocks_y" class="form-label">Bloques (Y):</label>
+                        <input type="number" name="blocks_y" class="form-control form-control-sm" value="16" min="1" max="1024">
+                    </div>
+                    <div class="column-info">
+                        <label for="threads_x" class="form-label">Hilos X:</label>
+                        <input type="number" name="threads_x" class="form-control form-control-sm" value="16" min="1" max="32">
+                    </div>
+                    <div class="column-info">
+                        <label for="threads_y" class="form-label">Hilos Y:</label>
+                        <input type="number" name="threads_y" class="form-control form-control-sm" value="16" min="1" max="32">
+                    </div>
+                </div>
+                
+                <button onclick="processImage()" class="btn-filter" id="process-button">Procesar DoG</button>
             </div>
 
-            <!-- Botón -->
-            <div class="col-auto align-self-end">
-                <button type="submit" class="btn btn-primary" id="process-button">Procesar DoG</button>
-            </div>
-        </div>
+        </div> 
+        <div class="hero">
+            <label for="image" id="drop-area">
+                <input type="file" accept="image/*" id="image" hidden>
+                <div class="img-view" id="img-view">
+                    <img src="/static/upload_cloud.png">
+                    <p>Drag and Drop or click here<br>to upload image</p>
+                    <span>Upload any images from desktop</span>
+                </div>
+            </label>
+        </div>  
+    </div>
+    
+    
 
-        <!-- Configuración de GPU (solo visible cuando se selecciona GPU) -->
-        <div id="gpu-config-group" class="row g-3 align-items-center gpu-config-row" style="display: none;">
-            <div class="col-auto">
-                <label for="blocks_x" class="form-label">Bloques (X):</label>
-                <input type="number" name="blocks_x" class="form-control form-control-sm" value="16" min="1" max="1024">
-            </div>
-            <div class="col-auto">
-                <label for="blocks_y" class="form-label">Bloques (Y):</label>
-                <input type="number" name="blocks_y" class="form-control form-control-sm" value="16" min="1" max="1024">
-            </div>
-            <div class="col-auto">
-                <label for="threads_x" class="form-label">Hilos X:</label>
-                <input type="number" name="threads_x" class="form-control form-control-sm" value="16" min="1" max="32">
-            </div>
-            <div class="col-auto">
-                <label for="threads_y" class="form-label">Hilos Y:</label>
-                <input type="number" name="threads_y" class="form-control form-control-sm" value="16" min="1" max="32">
-            </div>
-        </div>
-    </form>
-
+    <!-- Formulario único que cambia según el filtro seleccionado -->
+    
     {% if stats and output_image %}
     <hr class="my-4">
-    <div class="row">
-        <div class="col-md-6">
-            <h5>Original</h5>
-            <img src="{{ input_image }}" class="img-fluid rounded">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h5>Original</h5>
+                <img src="{{ input_image }}" class="img-fluid rounded custom-img">
+            </div>
+            <div class="col-md-6">
+                <h5>Procesada ({{ stats.method }})</h5>
+                <img src="{{ output_image }}" class="img-fluid rounded custom-img">
+            </div>
         </div>
-        <div class="col-md-6">
-            <h5>Procesada ({{ stats.method }})</h5>
-            <img src="{{ output_image }}" class="img-fluid rounded">
+
+        <!-- Results Table -->
+        <div class="table-container mt-3" style="margin-bottom: 20px;">
+            <h5>Estadísticas:</h5>
+            <table class="table custom-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Parámetro</th>
+                        <th scope="col">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Filtro</strong></td>
+                        <td>{{ stats.method }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Modo</strong></td>
+                        <td>{{ stats.mode }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tamaño máscara</strong></td>
+                        <td>{{ stats.mask_size }}</td>
+                    </tr>
+                    {% if stats.mode == 'GPU' %}
+                    <tr>
+                        <td><strong>Configuración GPU</strong></td>
+                        <td>Bloques: {{ stats.blocks }}, Hilos: {{ stats.threads }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>Tiempo de ejecución</strong></td>
+                        <td>{{ stats.time_s | round(4) }} segundos</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
-    <div class="mt-3">
-        <h5>Estadísticas:</h5>
-        <ul class="list-group">
-            <li class="list-group-item"><strong>Filtro:</strong> {{ stats.method }}</li>
-            <li class="list-group-item"><strong>Modo:</strong> {{ stats.mode }}</li>
-            <li class="list-group-item"><strong>Tamaño máscara:</strong> {{ stats.mask_size }}</li>
-            {% if stats.mode == 'GPU' %}
-            <li class="list-group-item"><strong>Configuración GPU:</strong> 
-                Bloques: {{ stats.blocks }}, Hilos: {{ stats.threads }}</li>
-            {% endif %}
-            <li class="list-group-item"><strong>Tiempo de ejecución:</strong> {{ stats.time_s | round(4) }} segundos</li>
-        </ul>
+    <div class="container mt-3">
+        <button onclick="window.location.reload();" class="btn btn-secondary">Nueva Transformación</button>
     </div>
-    {% endif %}
+{% endif %}
 
-    <script>
-        // Configuraciones para cada filtro
-        const filterConfigs = {
-            dog: {
-                name: "Difference of Gaussians (DoG)",
-                method: "dog",
-                maskOptions: [
-                    { value: "9", label: "9×9", id: "mask9", default: true },
-                    { value: "13", label: "13×13", id: "mask13" },
-                    { value: "21", label: "21×21", id: "mask21" },
-                    { value: "custom", label: "Personalizada", id: "mask_custom" }
-                ],
-                placeholder: "ej. 201",
-                min: 1,
-                max: 501,
-                step: 2
-            },
-            motion: {
-                name: "Motion Blur",
-                method: "motion",
-                maskOptions: [
-                    { value: "9", label: "9×9", id: "mask9", default: true },
-                    { value: "13", label: "13×13", id: "mask13" },
-                    { value: "21", label: "21×21", id: "mask21" },
-                    { value: "custom", label: "Personalizada", id: "mask_custom" }
-                ],
-                placeholder: "ej. 201",
-                min: 1,
-                max: 501,
-                step: 2
-            },
-            mean: {
-                name: "Mean Filter",
-                method: "mean",
-                maskOptions: [
-                    { value: "3", label: "3×3", id: "mask3", default: true },
-                    { value: "5", label: "5×5", id: "mask5" },
-                    { value: "7", label: "7×7", id: "mask7" },
-                    { value: "custom", label: "Personalizada", id: "mask_custom" }
-                ],
-                placeholder: "ej. 9",
-                min: 1,
-                max: 501,
-                step: 2
-            }
-        };
-
-        // Elementos del DOM
-        const filterSelector = document.getElementById('filter-selector');
-        const methodInput = document.getElementById('method-input');
-        const processButton = document.getElementById('process-button');
-        const maskOptionsContainer = document.getElementById('mask-options');
-        const customSizeGroup = document.getElementById('custom-size-group');
-        const customSizeInput = customSizeGroup.querySelector('input');
-        const modeSelector = document.getElementById('mode-selector');
-        const gpuConfigGroup = document.getElementById('gpu-config-group');
-
-        // Actualizar el formulario según el filtro seleccionado
-        function updateForm() {
-            const selectedFilter = filterSelector.value;
-            const config = filterConfigs[selectedFilter];
-            
-            // Actualizar método y texto del botón
-            methodInput.value = config.method;
-            processButton.textContent = `Procesar ${config.name}`;
-            
-            // Actualizar opciones de máscara
-            maskOptionsContainer.innerHTML = '';
-            config.maskOptions.forEach(option => {
-                const div = document.createElement('div');
-                div.className = 'form-check form-check-inline';
-                
-                const input = document.createElement('input');
-                input.className = 'form-check-input';
-                input.type = 'radio';
-                input.name = 'mask_option';
-                input.id = `${selectedFilter}_${option.id}`;
-                input.value = option.value;
-                if (option.default) input.checked = true;
-                
-                const label = document.createElement('label');
-                label.className = 'form-check-label';
-                label.htmlFor = `${selectedFilter}_${option.id}`;
-                label.textContent = option.label;
-                
-                div.appendChild(input);
-                div.appendChild(label);
-                maskOptionsContainer.appendChild(div);
-                
-                // Manejar cambios en los radios
-                input.addEventListener('change', () => {
-                    if (input.value === 'custom' && input.checked) {
-                        customSizeGroup.style.display = 'flex';
-                    } else if (input.checked) {
-                        customSizeGroup.style.display = 'none';
-                        customSizeInput.value = '';
-                    }
-                });
-            });
-            
-            // Actualizar input personalizado
-            customSizeInput.placeholder = config.placeholder;
-            customSizeInput.min = config.min;
-            customSizeInput.max = config.max;
-            customSizeInput.step = config.step;
-        }
-
-        // Manejar cambio de modo (CPU/GPU)
-        modeSelector.addEventListener('change', () => {
-            if (modeSelector.value === 'gpu') {
-                gpuConfigGroup.style.display = 'flex';
-            } else {
-                gpuConfigGroup.style.display = 'none';
-            }
-        });
-
-        // Inicializar el formulario
-        updateForm();
-        
-        // Manejar cambio de filtro
-        filterSelector.addEventListener('change', updateForm);
-    </script>
 </body>
 </html>

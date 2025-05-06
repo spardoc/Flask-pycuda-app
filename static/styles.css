@@ -1,21 +1,335 @@
 .text-space {
-    width: 100%;
-    height: auto;
+    width: 100vw; /* Full viewport width */
+    margin-left: calc(-50vw + 50%); /* Counteracts body's potential centering */
+    height: 150px; /* Fixed height recommended for background */
     display: grid;
-    grid-template-columns: 1fr 2fr 1fr; /* Title takes remaining space, logo on the right */
-    align-items: center; /* Vertically centers both items */
-    padding: 10px 0;
-    padding-bottom: 20px;
-    border-bottom: 1px solid #ccc; /* Fixed border syntax */
+    grid-template-columns: 1fr 2fr 1fr;
+    align-items: center;
+    border-bottom: 1px solid #ccc;
+    background-image: url('/static/wave.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: saturate(60%) brightness(140%) contrast(80%);
+    box-sizing: border-box;
 }
-
+html, body {
+    margin: 0;
+    padding: 0;
+}
+body {
+    display: flow-root;
+}
 .title {
-    text-align: center; /* Centers the h1 within its grid cell */
-    margin: 0; /* Removes default margins */
+    text-align: center;
+    margin: 0;
+    color: aliceblue;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    font-size: 2.5rem;
+    grid-column: 2;
 }
 
 .logo-ups {
-    height: 60px; /* Adjust based on your logo's aspect ratio */
+    height: max-content; /* Adjust based on your logo's aspect ratio */
     width: 300px; /* Maintains aspect ratio */
-    margin-left: 20px; /* Adds spacing between title and logo */
+    padding-left: 20px; /* Adds spacing between title and logo */
+}
+.gpu-config-row {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.selection-space {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+    width: 100%;  /* Ensure the container takes full width */
+}
+.filter-image-group {
+    margin-bottom: 20px;
+    align-items: center;
+
+}
+.subtitle{
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-size: large;
+    font-style: italic;
+}
+.filter-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    justify-items: center;
+    width: 100%;
+}
+
+.filter-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 25px;
+    border-radius: 24px;
+    border: 3px solid transparent;
+    background-color: #fff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+    width: 100%;
+    max-width: 300px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-option:hover {
+    background-color: #f0f0f0;
+}
+
+.filter-option.selected {
+    border-color: #4d90fe;
+    background-color: #e6f0ff;
+}
+
+.select-img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%; /* Circular image */
+    object-fit: cover;
+    margin-bottom: 12px;
+}
+
+.filter-option p {
+    font-size: 16px;
+    color: #333;
+    margin: 0;
+    font-weight: 500;
+}
+.img-parameters-space{
+    width: 100%;
+    height: fit-content;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background-color: #b1b0b0;
+    box-sizing: border-box;
+    margin-top: 20px;
+    background: linear-gradient(#ffffeb, #c2b6d9);
+}
+.hero{
+    width: 100%;
+    min-height: 55vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#drop-area{
+    width: 500px;
+    height: 300px;
+    padding: 30px;
+    background: #fff;
+    text-align: center;
+    border-radius: 20px;
+}
+.img-view{
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    border: 2px dashed #bbb5ff;
+    background-color: #f2f2f7;
+    background-position: center;
+    background-size: cover;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.img-view img{
+    width: 100px;
+    margin-top: 25px;
+
+}
+.img-view span{
+    display: block;
+    font-size: 12px;
+    color: #777;
+    margin-top: 15px;
+}
+.img-view:hover {
+    cursor: pointer;
+    background-color: #f0f8ff;
+    box-shadow: 0 0 10px rgba(77, 144, 254, 0.3);
+    transform: scale(1.01);
+}
+.size-mask-space{
+    width: 100%;
+    height: 40%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    
+}
+.form-space {
+    width: 100%;
+    min-height: 40vh;
+    margin: 10px;
+    border-radius: 20px;
+    background-color: rgba(230, 240, 255, 0.5); /* Semi-transparent background */
+    position: relative; /* For layering */
+    z-index: 0; /* Places the background behind the content */
+}
+
+.form-space * {
+    opacity: 1; /* Ensure all child elements are fully visible */
+}
+
+
+
+.form-label{
+    font-size: 26px;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+
+}
+.size-mask {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    align-items: center;  /* Vertically align items if necessary */
+}
+
+.flex-wrap-options {
+    display: flex;
+    gap: 10px;  /* Adjust gap between mask options */
+    flex-wrap: wrap;  /* Allow wrapping if there are too many options */
+}
+.personalized-choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+}
+
+.personalized-choice.enabled {
+    opacity: 1;
+}
+
+.personalized-choice-text:disabled {
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+}
+
+.mask-option.active {
+    background-color: #4d90fe;
+    color: white;
+    border-color: #4d90fe;
+}
+.dropdown-choice{
+    width: 100%;
+    height: 20%;
+    padding: 20px;
+}
+/* Style the select container */
+.form-select-choice {
+    width: 200px; /* Set a fixed width or adjust as necessary */
+    padding: 8px 12px; /* Add some padding for better spacing */
+    font-size: 16px; /* Adjust font size for readability */
+    background-color: #ffffff; /* White background for the select element */
+    border: 1px solid #ccc; /* Light border */
+    border-radius: 8px; /* Rounded corners */
+    appearance: none; /* Remove default browser styles */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer; /* Change the cursor to indicate it's clickable */
+    transition: border-color 0.3s ease, background-color 0.3s ease; /* Smooth transition for interactions */
+}
+
+/* Style for the select when focused */
+.form-select-choice:focus {
+    outline: none; /* Remove the default focus outline */
+    border-color: #4d90fe; /* Blue border color on focus */
+    background-color: #f7faff; /* Light blue background on focus */
+}
+
+/* Custom arrow for the select dropdown */
+.form-select-choice::after {
+    content: '▼'; /* Custom down arrow */
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none; /* Make sure it doesn’t interfere with selection */
+    color: #4d90fe; /* Blue color for the arrow */
+}
+
+/* Style the options inside the select */
+.form-select-choice option {
+    padding: 10px; /* Add padding inside options */
+    font-size: 16px; /* Match font size */
+}
+
+/* Hover effect for options */
+.form-select-choice option:hover {
+    background-color: #f1f1f1; /* Light gray background on hover */
+}
+.gpu-config-group {
+    max-height: 500px;
+    padding: 20px;
+    background-color: #f2f2f7;
+    border-radius: 2%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    width: 100%;
+    margin-top: 10px;
+    opacity: 0.5; /* Start as grayed out (not GPU) */
+    pointer-events: none; /* Disable interactions when not GPU */
+    transition: opacity 0.4s ease, max-height 0.4s ease;
+}
+
+.gpu-config-group.active {
+    opacity: 1; /* Fully visible when GPU is selected */
+    pointer-events: auto; /* Enable interactions */
+}
+
+.column-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.column-info label {
+    font-weight: 500;
+}
+
+.column-info input {
+    width: 100%;
+}
+
+.btn-filter {
+    margin: 20px 0;
+    padding: 10px 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 12px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+    cursor: pointer;
+}
+
+.btn-filter:hover {
+    background-color: #0056b3;
+    transform: scale(1.02);
+}
+
+.btn-filter:active {
+    background-color: #004a99;
+    transform: scale(0.98);
+}
+
+.btn-filter:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
 }
